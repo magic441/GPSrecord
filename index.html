@@ -22,13 +22,15 @@
                         <v-btn v-on:click="getGps">GPS取得</v-btn>
                         <v-btn v-on:click="postGas">記録(post)</v-btn>
                         <v-btn v-on:click="getGas">記録(get)</v-btn>
+                        <v-btn v-on:click="postGasWithAuth">記録(postWithAuth)</v-btn>
+
                     </v-col>
                 </v-row>
             </v-container>
         </v-main>
     </v-app>
     </div>
-
+    <script src="https://apis.google.com/js/client.js?onload=checkAuth"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
     <script>
@@ -52,7 +54,7 @@
                     })
                 },
                 postGas: function() {
-                    const endpoint = 'https://script.google.com/macros/s/AKfycbzEeOCEbrOpOjDIK0VUtjXVc_KeSLBaw799pwlzCDdW0C48DQdYGMV092jxrVi7FHbk/exec'
+                    const URL = 'https://script.google.com/macros/s/AKfycbxu-LbVYob88Qz6ALJRVwdrz3uiNHOeSuyJu4TvZUr0cSo1hzRUwryPOXDgZRvjs-4P/exec'
 
                     const reqdata = {
                         latitude: this.gpsinfo.latitude,
@@ -61,16 +63,17 @@
                     }
                     console.log(reqdata)
 
-                    const xhr = new XMLHttpRequest;       //インスタンス作成
-                    xhr.onload = () =>{       //レスポンスを受け取った時の処理（非同期）
-                        let res = xhr.responseText;
-                        if (res.length>0) alert(res);
-                    }
-                    xhr.onerror = () =>{       //エラーが起きた時の処理（非同期）
-                        alert("error!")
-                    }
-                    xhr.open('post',endpoint, true)  
-                    xhr.send(JSON.stringify(reqdata))
+                    fetch(URL, {
+                        method: "POST",
+                        body: JSON.stringify(reqdata),
+                        mode: "no-cors",
+                        headers:{
+                        "Content-Type": "application/json"
+                        }
+                    })
+                    .then(response => console.log("Success:", response))
+                    .catch(error => console.error("Error:", error));
+
                 },
                 getGas: function(){
                     const reqdata = {
@@ -79,12 +82,91 @@
                         memo: this.memo
                     }
 
-                    const URL = `https://script.google.com/macros/s/AKfycbxbbly0C5-rQB7CGRkVHNWoLOuZSMlXkGkstTUcDGXf2vBlz898s9hkNvfktd5qCp0/exec?data=${reqdata}`
+                    //?data=${JSON.stringify(reqdata)}
+                    const URL = `https://script.google.com/macros/s/AKfycbxu-LbVYob88Qz6ALJRVwdrz3uiNHOeSuyJu4TvZUr0cSo1hzRUwryPOXDgZRvjs-4P/exec?data=${JSON.stringify(reqdata)}`
                     
-                    let xhr = new XMLHttpRequest
-                    xhr.open("GET", URL)
-                    xhr.send()
+                    fetch(URL, {
+                        method: 'GET',
+                        mode: 'no-cors',
+                    })
+                    .then(res => console.log(res))
+                    .catch(err => console.error(err))
+                },
+                postGasWithAuth: function(){
+                    const reqdata = {
+                        latitude: this.gpsinfo.latitude,
+                        longitude: this.gpsinfo.longitude,
+                        memo: this.memo
+                    }
 
+                    const postGas = () =>{
+                            //Developer Consoleで設定したクライアントIDを入力
+                            const CLIENT_ID = '529550087193-4a0tthkniulojh3iq0vgj28vbq7g4u9g.apps.googleusercontent.com'
+                            //必要としてるスコープ（カンマ区切りで複数設定）
+                            const SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+                            checkAuth(CLIENT_ID, SCOPES)    
+                    }
+
+                    //認証を実行するルーチン
+                    const checkAuth = (CLIENT_ID, SCOPES) => {
+                        console.log("checkAuth開始")
+                        gapi.auth.authorize(
+                        {
+                        'client_id': CLIENT_ID,
+                        'scope': SCOPES.join(' '),
+                        'immediate': false
+                        }, handleAuthResult)//コールバック
+                    }
+
+                    const handleAuthResult = (authResult) => {
+                        console.log("handleAuthResult開始")
+                        if (authResult && !authResult.error) {
+                            handleResult()
+                        } else {
+                            console.log("checkAuth失敗")
+                        }
+                    }
+
+                    //Execution APIを実行してスクリプト側の関数を叩くルーチン
+                    const handleResult = () =>{
+                        console.log("handleResult開始")
+                        //現在のAPI IDを入力する
+                        const scriptId = "AKfycbxTq7BJZPY0JYNFnqjEFK-EdH6ybBDOH9he0qN4CyDQVca0hbNmvC3w4xd1MrhTK6-y"
+
+                        // スクリプト側の関数（引数を必要とする場合は、'parameters': [sheetId]といった具合に渡せる）
+                        const request = {
+                        'function': 'doPost',
+                        'parameters': [reqdata]
+                        }
+                        
+                        // APIリクエストを組み立てる
+                        const op = gapi.client.request({
+                        'root': 'https://script.googleapis.com',
+                        'path': 'v1/scripts/' + scriptId + ':run',
+                        'method': 'POST',
+                        'body': request
+                        });
+                        //リクエストの実行と結果の受け取り
+                        op.execute((resp) => {
+                            if (resp.error && resp.error.status) {
+                                //APIの実行に失敗した場合の処理
+                                console.log('APIの呼び出し失敗')
+                            }
+                            else if (resp.error) {
+                                //APIの実行結果、エラーが発生した場合の処理
+                                const error = resp.error.details[0]
+                                console.log(`エラー:${error.errorMessage}`)
+                            }
+                            else {
+                                //APIの実行に成功し、帰ってきた値を処理するルーチン
+                                console.log(resp.response)
+                                if(resp.response.result){
+                                    console.log(JSON.parse(resp.response.result))
+                                }
+                            }
+                        })
+                    }
+                    postGas()
                 }
             }
         });
