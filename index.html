@@ -20,6 +20,8 @@
                         <div>経度：{{gpsinfo.longitude}}</div> 
                         <v-text-field v-model="memo" label="memo"></v-text-field>
                         <v-btn v-on:click="getGps">GPS取得</v-btn>
+                        <v-btn v-on:click="postGas">記録(post)</v-btn>
+                        <v-btn v-on:click="getGas">記録(get)</v-btn>
                     </v-col>
                 </v-row>
             </v-container>
@@ -48,6 +50,41 @@
                         console.log(lng)
                         this.gpsinfo = {latitude: lat, longitude: lng}
                     })
+                },
+                postGas: function() {
+                    const endpoint = 'https://script.google.com/macros/s/AKfycbzEeOCEbrOpOjDIK0VUtjXVc_KeSLBaw799pwlzCDdW0C48DQdYGMV092jxrVi7FHbk/exec'
+
+                    const reqdata = {
+                        latitude: this.gpsinfo.latitude,
+                        longitude: this.gpsinfo.longitude,
+                        memo: this.memo
+                    }
+                    console.log(reqdata)
+
+                    const xhr = new XMLHttpRequest;       //インスタンス作成
+                    xhr.onload = () =>{       //レスポンスを受け取った時の処理（非同期）
+                        let res = xhr.responseText;
+                        if (res.length>0) alert(res);
+                    }
+                    xhr.onerror = () =>{       //エラーが起きた時の処理（非同期）
+                        alert("error!")
+                    }
+                    xhr.open('post',endpoint, true)  
+                    xhr.send(JSON.stringify(reqdata))
+                },
+                getGas: function(){
+                    const reqdata = {
+                        latitude: this.gpsinfo.latitude,
+                        longitude: this.gpsinfo.longitude,
+                        memo: this.memo
+                    }
+
+                    const URL = `https://script.google.com/macros/s/AKfycbxbbly0C5-rQB7CGRkVHNWoLOuZSMlXkGkstTUcDGXf2vBlz898s9hkNvfktd5qCp0/exec?data=${reqdata}`
+                    
+                    let xhr = new XMLHttpRequest
+                    xhr.open("GET", URL)
+                    xhr.send()
+
                 }
             }
         });
