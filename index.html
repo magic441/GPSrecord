@@ -40,6 +40,17 @@
                 memo: ''
             },
             methods: {
+                getGps: function() {
+                    navigator.geolocation.getCurrentPosition((position)=> {
+                        //緯度
+                        let lat = position.coords.latitude
+                        //経度
+                        let lng = position.coords.longitude
+                        console.log(lat)
+                        console.log(lng)
+                        this.gpsinfo = {latitude: lat, longitude: lng}
+                    })
+                },
                 postGasWithAuth: function(){
                     const reqdata = {
                         latitude: this.gpsinfo.latitude,
