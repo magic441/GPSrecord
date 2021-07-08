@@ -137,7 +137,7 @@
                         // スクリプト側の関数（引数を必要とする場合は、'parameters': [sheetId]といった具合に渡せる）
                         const request = {
                         'function': 'doPost',
-                        'parameters': [reqdata]
+                        'parameters': [JSON.stringify(reqdata)]
                         }
                         
                         // APIリクエストを組み立てる
